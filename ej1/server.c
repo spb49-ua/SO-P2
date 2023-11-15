@@ -1,11 +1,38 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <unistd.h>
+#include <string.h>
+#include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <ifaddrs.h>
+#include <arpa/inet.h>
+#include <netdb.h> // Incluir para NI_MAXHOST
 
 #define PORT 9999
+
+void printIPAddress() {
+    struct ifaddrs *interfaces, *iface;
+    char host[NI_MAXHOST]; // Tamaño del buffer para la dirección IP
+
+    if (getifaddrs(&interfaces) == -1) {
+        perror("getifaddrs");
+        exit(EXIT_FAILURE);
+    }
+
+    printf("Server IP Addresses:\n");
+    for (iface = interfaces; iface != NULL; iface = iface->ifa_next) {
+        if (iface->ifa_addr == NULL) continue;
+        if (iface->ifa_addr->sa_family == AF_INET) { // check it is IP4
+            // is a valid IP4 Address
+            void* tmpAddrPtr = &((struct sockaddr_in *)iface->ifa_addr)->sin_addr;
+            inet_ntop(AF_INET, tmpAddrPtr, host, NI_MAXHOST);
+            printf("%s: %s\n", iface->ifa_name, host); 
+        }
+    }
+
+    freeifaddrs(interfaces);
+}
 
 int main() {
     int server_fd, new_socket;
@@ -35,6 +62,9 @@ int main() {
         perror("bind failed");
         exit(EXIT_FAILURE);
     }
+
+    printIPAddress(); // Imprimir la dirección IP del servidor
+
     if (listen(server_fd, 3) < 0) {
         perror("listen");
         exit(EXIT_FAILURE);
